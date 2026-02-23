@@ -45,11 +45,16 @@ class RealESRGANer():
         self.half = half
 
         # initialize model
-        if gpu_id:
-            self.device = torch.device(
-                f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu') if device is None else device
+        if device is not None:
+            self.device = device
+        elif gpu_id is not None:
+            self.device = torch.device(f'cuda:{gpu_id}' if torch.cuda.is_available() else 'cpu')
+        elif torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            self.device = torch.device('mps')
         else:
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if device is None else device
+            self.device = torch.device('cpu')
 
         if isinstance(model_path, list):
             # dni
@@ -71,6 +76,9 @@ class RealESRGANer():
 
         model.eval()
         self.model = model.to(self.device)
+        # MPS does not support half precision reliably, so disable it
+        if self.device.type == 'mps':
+            self.half = False
         if self.half:
             self.model = self.model.half()
 

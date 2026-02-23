@@ -265,11 +265,16 @@ def inference_video(args, video_save_path, device=None, total_workers=1, worker_
                 output, _ = upsampler.enhance(img, outscale=args.outscale)
         except RuntimeError as error:
             print('Error', error)
-            print('If you encounter CUDA out of memory, try to set --tile with a smaller number.')
+            print('If you encounter CUDA/MPS out of memory, try to set --tile with a smaller number.')
         else:
             writer.write_frame(output)
 
-        torch.cuda.synchronize(device)
+        if device is not None and device.type == 'cuda':
+            torch.cuda.synchronize(device)
+        elif device is not None and device.type == 'mps':
+            torch.mps.synchronize()
+        elif torch.cuda.is_available():
+            torch.cuda.synchronize()
         pbar.update(1)
 
     reader.close()
@@ -286,8 +291,15 @@ def run(args):
         os.system(f'ffmpeg -i {args.input} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0  {tmp_frames_folder}/frame%08d.png')
         args.input = tmp_frames_folder
 
-    num_gpus = torch.cuda.device_count()
-    num_process = num_gpus * args.num_process_per_gpu
+    # Determine available GPU count; MPS (Apple Silicon) exposes a single device
+    if torch.cuda.is_available():
+        num_gpus = torch.cuda.device_count()
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        num_gpus = 1
+    else:
+        num_gpus = 0
+
+    num_process = max(num_gpus, 1) * args.num_process_per_gpu
     if num_process == 1:
         inference_video(args, video_save_path)
         return
@@ -298,9 +310,15 @@ def run(args):
     pbar = tqdm(total=num_process, unit='sub_video', desc='inference')
     for i in range(num_process):
         sub_video_save_path = osp.join(args.output, f'{args.video_name}_out_tmp_videos', f'{i:03d}.mp4')
+        if torch.cuda.is_available():
+            device = torch.device(f'cuda:{i % num_gpus}')
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            device = torch.device('mps')
+        else:
+            device = torch.device('cpu')
         pool.apply_async(
             inference_video,
-            args=(args, sub_video_save_path, torch.device(i % num_gpus), num_process, i),
+            args=(args, sub_video_save_path, device, num_process, i),
             callback=lambda arg: pbar.update(1))
     pool.close()
     pool.join()
