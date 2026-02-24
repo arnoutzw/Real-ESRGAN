@@ -6,7 +6,7 @@
 
 <div align="center">
 
-👀[**Demos**](#-demos-videos) **|** 🚩[**Updates**](#-updates) **|** ⚡[**Usage**](#-quick-inference) **|** 🏰[**Model Zoo**](docs/model_zoo.md) **|** 🔧[Install](#-dependencies-and-installation)  **|** 💻[Train](docs/Training.md) **|** ❓[FAQ](docs/FAQ.md) **|** 🎨[Contribution](docs/CONTRIBUTING.md)
+👀[**Demos**](#-demos-videos) **|** 🚩[**Updates**](#-updates) **|** ⚡[**Usage**](#-quick-inference) **|** 🏰[**Model Zoo**](docs/model_zoo.md) **|** 🔧[Install](#-dependencies-and-installation) **|** 🍎[Mac](#-mac-apple-silicon-installation) **|** 💻[Train](docs/Training.md) **|** ❓[FAQ](docs/FAQ.md) **|** 🎨[Contribution](docs/CONTRIBUTING.md)
 
 [![download](https://img.shields.io/github/downloads/xinntao/Real-ESRGAN/total.svg)](https://github.com/xinntao/Real-ESRGAN/releases)
 [![PyPI](https://img.shields.io/pypi/v/realesrgan)](https://pypi.org/project/realesrgan/)
@@ -59,6 +59,7 @@ Other recommended projects:<br>
 <!---------------------------------- Updates --------------------------->
 ## 🚩 Updates
 
+- ✅ Add **Mac Apple Silicon (M1/M2/M3) support** with MPS backend for both inference and training. See [Mac Installation Guide](#-mac-apple-silicon-installation).
 - ✅ Add the **realesr-general-x4v3** model - a tiny small model for general scenes. It also supports the **-dn** option to balance the noise (avoiding over-smooth results). **-dn** is short for denoising strength.
 - ✅ Update the **RealESRGAN AnimeVideo-v3** model. Please see [anime video models](docs/anime_video_model.md) and [comparisons](docs/anime_comparisons.md) for more details.
 - ✅ Add small models for anime videos. More details are in [anime video models](docs/anime_video_model.md).
@@ -87,7 +88,8 @@ Other recommended projects:<br>
 ## 🔧 Dependencies and Installation
 
 - Python >= 3.7 (Recommend to use [Anaconda](https://www.anaconda.com/download/#linux) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html))
-- [PyTorch >= 1.7](https://pytorch.org/)
+- [PyTorch >= 1.7](https://pytorch.org/) (PyTorch >= 1.13 recommended for Mac Apple Silicon MPS support)
+- **Supported platforms**: Linux (CUDA), Windows (CUDA), Mac (Apple Silicon MPS / Intel CPU)
 
 ### Installation
 
@@ -110,6 +112,70 @@ Other recommended projects:<br>
     pip install -r requirements.txt
     python setup.py develop
     ```
+
+### 🍎 Mac Apple Silicon Installation
+
+Real-ESRGAN supports Mac Apple Silicon (M1/M2/M3) natively via the PyTorch MPS backend. The MPS device is automatically detected — no extra flags are needed.
+
+#### Prerequisites
+
+- macOS 12.3 (Monterey) or later
+- Python 3.8 - 3.12 (via [Miniforge](https://github.com/conda-forge/miniforge) or [Homebrew](https://brew.sh))
+- PyTorch >= 1.13 (for MPS support)
+
+#### Step-by-step guide
+
+1. **Install Homebrew** (if not already installed)
+
+    ```bash
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    ```
+
+2. **Install Python** (Miniforge recommended for Apple Silicon)
+
+    ```bash
+    brew install miniforge
+    conda create -n realesrgan python=3.10
+    conda activate realesrgan
+    ```
+
+3. **Install PyTorch with MPS support**
+
+    ```bash
+    pip install torch torchvision
+    ```
+
+    Verify MPS is available:
+
+    ```bash
+    python -c "import torch; print('MPS available:', torch.backends.mps.is_available())"
+    ```
+
+4. **Clone and install Real-ESRGAN**
+
+    ```bash
+    git clone https://github.com/xinntao/Real-ESRGAN.git
+    cd Real-ESRGAN
+    pip install basicsr
+    pip install facexlib
+    pip install gfpgan
+    pip install -r requirements.txt
+    python setup.py develop
+    ```
+
+5. **Run inference**
+
+    ```bash
+    # MPS is auto-detected, no special flags needed
+    python inference_realesrgan.py -n RealESRGAN_x4plus -i inputs
+    ```
+
+#### Mac-specific notes
+
+- **Half precision (FP16)** is automatically disabled on MPS since it is not reliably supported. Inference uses FP32 instead, which is slightly slower but produces correct results.
+- **Tile mode** (`--tile`) is recommended for large images to avoid running out of memory.
+- If you encounter issues, you can force CPU mode with `--fp32` or set the environment variable `PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0` to let PyTorch manage MPS memory more aggressively.
+- **Training** on MPS is supported but slower than CUDA. For serious training workloads, a CUDA GPU is recommended.
 
 ---
 
