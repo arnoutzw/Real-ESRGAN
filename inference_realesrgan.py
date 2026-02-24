@@ -147,7 +147,7 @@ def main():
                 output, _ = upsampler.enhance(img, outscale=args.outscale)
         except RuntimeError as error:
             print('Error', error)
-            print('If you encounter CUDA out of memory, try to set --tile with a smaller number.')
+            print('If you encounter CUDA/MPS out of memory, try to set --tile with a smaller number.')
         else:
             if args.ext == 'auto':
                 extension = extension[1:]
